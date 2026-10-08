@@ -43,7 +43,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Identifiants invalides');
+        setError(data.details ? `${data.error} (${data.details})` : (data.error || 'Identifiants invalides'));
         setLoading(false);
         return;
       }

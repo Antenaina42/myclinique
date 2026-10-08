@@ -73,7 +73,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Une erreur est survenue lors de la connexion' },
+      { 
+        error: 'Une erreur est survenue lors de la connexion',
+        details: error?.message || String(error),
+      },
       { status: 500 }
     );
   }
