@@ -11,6 +11,9 @@ export async function GET() {
   let parsedDb = '';
   let parsedUser = '';
 
+  const rawEnv = process.env.DATABASE_URL || '';
+  const safeRawPreview = rawEnv.replace(/(:[^:@]+@)/, ':****@');
+
   if (dbUrl) {
     try {
       const url = new URL(dbUrl);
@@ -35,6 +38,7 @@ export async function GET() {
       database: 'connected',
       durationMs,
       databaseUrl: maskedUrl,
+      rawEnvDatabaseUrl: safeRawPreview,
       dbHost: parsedHost,
       dbUser: parsedUser,
       dbName: parsedDb,
@@ -53,6 +57,7 @@ export async function GET() {
         status: 'error',
         database: 'disconnected',
         databaseUrl: maskedUrl,
+        rawEnvDatabaseUrl: safeRawPreview,
         dbHost: parsedHost,
         dbUser: parsedUser,
         dbName: parsedDb,
