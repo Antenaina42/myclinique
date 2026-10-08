@@ -42,6 +42,7 @@ model Clinic {
   auditLogs        AuditLog[]
   settings         Setting[]
   chatMessages     ChatMessage[]
+  @@map("clinic")
 }
 
 // -------------------------------------------------------------
@@ -67,6 +68,7 @@ model Role {
   permissions RolePermission[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+  @@map("role")
 }
 
 model Permission {
@@ -76,6 +78,7 @@ model Permission {
   module      String           @db.VarChar(100)
   description String?          @db.VarChar(255)
   roles       RolePermission[]
+  @@map("permission")
 }
 
 model RolePermission {
@@ -86,6 +89,7 @@ model RolePermission {
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
+  @@map("rolepermission")
 }
 
 model User {
@@ -114,6 +118,7 @@ model User {
 
   @@index([email])
   @@index([clinicId])
+  @@map("user")
 }
 
 // -------------------------------------------------------------
@@ -126,6 +131,7 @@ model Specialty {
   description String?  @db.VarChar(255)
   doctors     Doctor[]
   createdAt   DateTime @default(now())
+  @@map("specialty")
 }
 
 model Doctor {
@@ -151,6 +157,7 @@ model Doctor {
 
   @@index([clinicId])
   @@index([specialtyId])
+  @@map("doctor")
 }
 
 // -------------------------------------------------------------
@@ -202,6 +209,7 @@ model Patient {
   @@index([lastName])
   @@index([firstName])
   @@index([phone])
+  @@map("patient")
 }
 
 model MedicalRecord {
@@ -217,6 +225,7 @@ model MedicalRecord {
   generalNotes     String?  @db.Text
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  @@map("medicalrecord")
 }
 
 enum DocumentCategory {
@@ -242,6 +251,7 @@ model PatientDocument {
   createdAt   DateTime         @default(now())
 
   @@index([patientId])
+  @@map("patientdocument")
 }
 
 // -------------------------------------------------------------
@@ -277,6 +287,7 @@ model Appointment {
   @@index([appointmentDate])
   @@index([patientId])
   @@index([status])
+  @@map("appointment")
 }
 
 // -------------------------------------------------------------
@@ -315,6 +326,7 @@ model Consultation {
   @@index([patientId])
   @@index([doctorId])
   @@index([consultationDate])
+  @@map("consultation")
 }
 
 model VitalSign {
@@ -330,6 +342,7 @@ model VitalSign {
   height           Float?
   bmi              Float?
   measuredAt       DateTime     @default(now())
+  @@map("vitalsign")
 }
 
 // -------------------------------------------------------------
@@ -364,6 +377,7 @@ model Prescription {
   @@index([patientId])
   @@index([doctorId])
   @@index([prescriptionNumber])
+  @@map("prescription")
 }
 
 model PrescriptionItem {
@@ -382,6 +396,7 @@ model PrescriptionItem {
   instructions   String?      @db.VarChar(255)
 
   @@index([prescriptionId])
+  @@map("prescriptionitem")
 }
 
 // -------------------------------------------------------------
@@ -394,6 +409,7 @@ model MedicineCategory {
   description String?    @db.VarChar(255)
   medicines   Medicine[]
   createdAt   DateTime   @default(now())
+  @@map("medicinecategory")
 }
 
 model Medicine {
@@ -427,6 +443,7 @@ model Medicine {
   @@index([categoryId])
   @@index([name])
   @@index([genericName])
+  @@map("medicine")
 }
 
 model Supplier {
@@ -446,6 +463,7 @@ model Supplier {
   stockEntries  StockEntry[]
 
   @@index([clinicId])
+  @@map("supplier")
 }
 
 model StockEntry {
@@ -465,6 +483,7 @@ model StockEntry {
 
   @@index([medicineId])
   @@index([supplierId])
+  @@map("stockentry")
 }
 
 enum StockExitReason {
@@ -486,6 +505,7 @@ model StockExit {
   createdById String?         @db.VarChar(36)
 
   @@index([medicineId])
+  @@map("stockexit")
 }
 
 // -------------------------------------------------------------
@@ -531,6 +551,7 @@ model PharmacySale {
   @@index([clinicId])
   @@index([saleNumber])
   @@index([saleDate])
+  @@map("pharmacysale")
 }
 
 model PharmacySaleItem {
@@ -546,6 +567,7 @@ model PharmacySaleItem {
 
   @@index([pharmacySaleId])
   @@index([medicineId])
+  @@map("pharmacysaleitem")
 }
 
 // -------------------------------------------------------------
@@ -587,6 +609,7 @@ model Invoice {
   @@index([patientId])
   @@index([invoiceNumber])
   @@index([status])
+  @@map("invoice")
 }
 
 enum InvoiceItemType {
@@ -610,6 +633,7 @@ model InvoiceItem {
   totalPrice  Float
 
   @@index([invoiceId])
+  @@map("invoiceitem")
 }
 
 model Payment {
@@ -626,6 +650,7 @@ model Payment {
   createdAt     DateTime      @default(now())
 
   @@index([invoiceId])
+  @@map("payment")
 }
 
 enum CashTransactionType {
@@ -651,6 +676,7 @@ model CashTransaction {
   @@index([clinicId])
   @@index([type])
   @@index([transactionDate])
+  @@map("cashtransaction")
 }
 
 // -------------------------------------------------------------
@@ -682,6 +708,7 @@ model Notification {
 
   @@index([clinicId])
   @@index([userId])
+  @@map("notification")
 }
 
 enum AuditAction {
@@ -711,6 +738,7 @@ model AuditLog {
   @@index([clinicId])
   @@index([entity])
   @@index([createdAt])
+  @@map("auditlog")
 }
 
 // -------------------------------------------------------------
@@ -728,6 +756,7 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@unique([clinicId, key])
+  @@map("setting")
 }
 
 // -------------------------------------------------------------
@@ -751,5 +780,6 @@ model ChatMessage {
   @@index([senderId, receiverId])
   @@index([receiverId, isRead])
   @@index([createdAt])
+  @@map("chatmessage")
 }
 
