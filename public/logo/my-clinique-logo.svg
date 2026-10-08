@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" width="360" height="80">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1677FF" />
+      <stop offset="100%" stop-color="#0F4C81" />
+    </linearGradient>
+    <linearGradient id="logoAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#20C997" />
+      <stop offset="100%" stop-color="#0E9F6E" />
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0F4C81" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Medical Icon -->
+  <g transform="translate(10, 10)">
+    <rect x="0" y="0" width="60" height="60" rx="16" fill="url(#logoGrad)" filter="url(#logoShadow)" />
+    <!-- Cross -->
+    <rect x="25" y="14" width="10" height="32" rx="5" fill="#FFFFFF" opacity="0.95" />
+    <rect x="14" y="25" width="32" height="10" rx="5" fill="#FFFFFF" opacity="0.95" />
+    <!-- M Pulse Wave -->
+    <path d="M 17 30 L 23 30 L 27 20 L 30 40 L 33 26 L 37 30 L 43 30" 
+          stroke="url(#logoAccent)" 
+          stroke-width="3.2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          fill="none" />
+  </g>
+
+  <!-- Typography: Name and Slogan -->
+  <g transform="translate(84, 18)">
+    <!-- Brand Name: MY CLINIQUE -->
+    <text x="0" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="26" letter-spacing="1">
+      <tspan fill="#0F4C81">MY </tspan>
+      <tspan fill="#1677FF">CLINIQUE</tspan>
+    </text>
+    <!-- Plus Dot Accent -->
+    <circle cx="188" cy="16" r="3.5" fill="#20C997" />
+
+    <!-- Slogan: La gestion intelligente de votre clinique -->
+    <text x="1" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="500" font-size="10.5" fill="#6B7280" letter-spacing="0.4">
+      La gestion intelligente de votre clinique
+    </text>
+  </g>
+</svg>

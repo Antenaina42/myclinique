@@ -1,0 +1,755 @@
+// Prisma Schema pour MY CLINIQUE — Système de gestion de clinique médicale
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// CLINIC & MULTI-CLINIQUE READY
+// -------------------------------------------------------------
+
+model Clinic {
+  id               String            @id @default(uuid()) @db.VarChar(36)
+  name             String            @default("Clinique Médicale Saint-Luc") @db.VarChar(150)
+  slug             String            @unique @default("saint-luc") @db.VarChar(100)
+  slogan           String?           @default("La gestion intelligente de votre clinique") @db.VarChar(255)
+  logoUrl          String?           @default("/logo/my-clinique-logo.svg") @db.VarChar(255)
+  address          String?           @default("Lot IVG 35 Antananarivo, Madagascar") @db.VarChar(255)
+  phone            String?           @default("+261 20 22 123 45") @db.VarChar(50)
+  email            String?           @default("contact@myclinique.mg") @db.VarChar(150)
+  website          String?           @default("https://myclinique.mg") @db.VarChar(150)
+  taxId            String?           @default("NIF: 3000123456 / STAT: 85111") @db.VarChar(100)
+  currency         String            @default("Ar") @db.VarChar(20)
+  dateFormat       String            @default("DD/MM/YYYY") @db.VarChar(20)
+  timeZone         String            @default("Indian/Antananarivo") @db.VarChar(50)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  users            User[]
+  patients         Patient[]
+  doctors          Doctor[]
+  medicines        Medicine[]
+  suppliers        Supplier[]
+  invoices         Invoice[]
+  pharmacySales    PharmacySale[]
+  cashTransactions CashTransaction[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  settings         Setting[]
+  chatMessages     ChatMessage[]
+}
+
+// -------------------------------------------------------------
+// UTILISATEURS, RÔLES & PERMISSIONS (RBAC)
+// -------------------------------------------------------------
+
+enum RoleType {
+  SUPER_ADMIN
+  CLINIC_ADMIN
+  DOCTOR
+  NURSE
+  PHARMACIST
+  RECEPTIONIST
+  ACCOUNTANT
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.VarChar(36)
+  name        RoleType         @unique
+  displayName String           @db.VarChar(100)
+  description String?          @db.VarChar(255)
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.VarChar(36)
+  code        String           @unique @db.VarChar(100)
+  name        String           @db.VarChar(150)
+  module      String           @db.VarChar(100)
+  description String?          @db.VarChar(255)
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.VarChar(36)
+  roleId       String     @db.VarChar(36)
+  permissionId String     @db.VarChar(36)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model User {
+  id               String            @id @default(uuid()) @db.VarChar(36)
+  email            String            @unique @db.VarChar(191)
+  passwordHash     String            @db.VarChar(255)
+  firstName        String            @db.VarChar(100)
+  lastName         String            @db.VarChar(100)
+  phone            String?           @db.VarChar(50)
+  avatar           String?           @db.VarChar(255)
+  isActive         Boolean           @default(true)
+  lastLoginAt      DateTime?
+  clinicId         String            @db.VarChar(36)
+  clinic           Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  roleId           String            @db.VarChar(36)
+  role             Role              @relation(fields: [roleId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  doctorProfile    Doctor?
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  cashTransactions CashTransaction[]
+  sentMessages     ChatMessage[]     @relation("SentMessages")
+  receivedMessages ChatMessage[]     @relation("ReceivedMessages")
+
+  @@index([email])
+  @@index([clinicId])
+}
+
+// -------------------------------------------------------------
+// MÉDECINS & SPÉCIALITÉS
+// -------------------------------------------------------------
+
+model Specialty {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  doctors     Doctor[]
+  createdAt   DateTime @default(now())
+}
+
+model Doctor {
+  id            String         @id @default(uuid()) @db.VarChar(36)
+  userId        String         @unique @db.VarChar(36)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicId      String         @db.VarChar(36)
+  clinic        Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  licenseNumber String         @unique @db.VarChar(100)
+  specialtyId   String         @db.VarChar(36)
+  specialty     Specialty      @relation(fields: [specialtyId], references: [id])
+  phone         String?        @db.VarChar(50)
+  bio           String?        @db.Text
+  workingHours  String?        @default("Lun - Ven: 08h00 - 17h00") @db.VarChar(100)
+  stampUrl      String?        @db.VarChar(255)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  appointments  Appointment[]
+  consultations Consultation[]
+  prescriptions Prescription[]
+  patients      Patient[]      @relation("PrimaryDoctor")
+
+  @@index([clinicId])
+  @@index([specialtyId])
+}
+
+// -------------------------------------------------------------
+// PATIENTS & DOSSIER MÉDICAL
+// -------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+model Patient {
+  id                     String            @id @default(uuid()) @db.VarChar(36)
+  clinicId               String            @db.VarChar(36)
+  clinic                 Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientNumber          String            @unique @db.VarChar(50)
+  firstName              String            @db.VarChar(80)
+  lastName               String            @db.VarChar(80)
+  gender                 Gender            @default(MALE)
+  birthDate              DateTime
+  bloodGroup             String?           @default("O+") @db.VarChar(10)
+  phone                  String            @db.VarChar(50)
+  email                  String?           @db.VarChar(150)
+  address                String?           @db.VarChar(255)
+  city                   String?           @default("Antananarivo") @db.VarChar(100)
+  idCardNumber           String?           @db.VarChar(50)
+  emergencyContactName   String?           @db.VarChar(150)
+  emergencyContactPhone  String?           @db.VarChar(50)
+  emergencyContactRel    String?           @db.VarChar(50)
+  photoUrl               String?           @db.VarChar(255)
+  primaryDoctorId        String?           @db.VarChar(36)
+  primaryDoctor          Doctor?           @relation("PrimaryDoctor", fields: [primaryDoctorId], references: [id])
+  isActive               Boolean           @default(true)
+  deletedAt              DateTime?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  medicalRecord          MedicalRecord?
+  appointments           Appointment[]
+  consultations          Consultation[]
+  prescriptions          Prescription[]
+  invoices               Invoice[]
+  documents              PatientDocument[]
+  pharmacySales          PharmacySale[]
+
+  @@index([clinicId])
+  @@index([patientNumber])
+  @@index([lastName])
+  @@index([firstName])
+  @@index([phone])
+}
+
+model MedicalRecord {
+  id               String   @id @default(uuid()) @db.VarChar(36)
+  patientId        String   @unique @db.VarChar(36)
+  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  allergies        String?  @db.Text
+  chronicDiseases  String?  @db.Text
+  surgicalHistory  String?  @db.Text
+  familyHistory    String?  @db.Text
+  habits           String?  @db.Text
+  bloodTransfusion Boolean  @default(false)
+  generalNotes     String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum DocumentCategory {
+  LAB_REPORT
+  XRAY_IMAGING
+  PRESCRIPTION
+  MEDICAL_CERTIFICATE
+  DISCHARGE_SUMMARY
+  OTHER
+}
+
+model PatientDocument {
+  id          String           @id @default(uuid()) @db.VarChar(36)
+  patientId   String           @db.VarChar(36)
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  title       String           @db.VarChar(150)
+  category    DocumentCategory @default(LAB_REPORT)
+  fileUrl     String           @db.VarChar(255)
+  fileType    String?          @default("application/pdf") @db.VarChar(50)
+  fileSize    Int?
+  uploadedBy  String?          @db.VarChar(100)
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+
+  @@index([patientId])
+}
+
+// -------------------------------------------------------------
+// RENDEZ-VOUS
+// -------------------------------------------------------------
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+  patientId       String            @db.VarChar(36)
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId        String            @db.VarChar(36)
+  doctor          Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointmentDate DateTime
+  startTime       String            @db.VarChar(10)
+  endTime         String?           @db.VarChar(10)
+  status          AppointmentStatus @default(PENDING)
+  reason          String?           @db.VarChar(255)
+  notes           String?           @db.Text
+  consultation    Consultation?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([doctorId])
+  @@index([appointmentDate])
+  @@index([patientId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// CONSULTATIONS & CONSTANTES VITALES
+// -------------------------------------------------------------
+
+enum ConsultationStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Consultation {
+  id                  String             @id @default(uuid()) @db.VarChar(36)
+  patientId           String             @db.VarChar(36)
+  patient             Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId            String             @db.VarChar(36)
+  doctor              Doctor             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointmentId       String?            @unique @db.VarChar(36)
+  appointment         Appointment?       @relation(fields: [appointmentId], references: [id])
+  consultationDate    DateTime           @default(now())
+  reason              String             @db.VarChar(255)
+  symptoms            String?            @db.Text
+  physicalExamination String?            @db.Text
+  diagnosis           String?            @db.Text
+  treatment           String?            @db.Text
+  doctorNotes         String?            @db.Text
+  status              ConsultationStatus @default(COMPLETED)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  vitalSigns          VitalSign?
+  prescription        Prescription?
+  invoice             Invoice?
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([consultationDate])
+}
+
+model VitalSign {
+  id               String       @id @default(uuid()) @db.VarChar(36)
+  consultationId   String       @unique @db.VarChar(36)
+  consultation     Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  temperature      Float?
+  systolicBP       Int?
+  diastolicBP      Int?
+  heartRate        Int?
+  oxygenSaturation Float?
+  weight           Float?
+  height           Float?
+  bmi              Float?
+  measuredAt       DateTime     @default(now())
+}
+
+// -------------------------------------------------------------
+// ORDONNANCES MÉDICALES
+// -------------------------------------------------------------
+
+enum PrescriptionStatus {
+  ACTIVE
+  DISPENSED
+  CANCELLED
+}
+
+model Prescription {
+  id                 String             @id @default(uuid()) @db.VarChar(36)
+  prescriptionNumber String             @unique @db.VarChar(50)
+  patientId          String             @db.VarChar(36)
+  patient            Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId           String             @db.VarChar(36)
+  doctor             Doctor             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  consultationId     String?            @unique @db.VarChar(36)
+  consultation       Consultation?      @relation(fields: [consultationId], references: [id])
+  status             PrescriptionStatus @default(ACTIVE)
+  qrCode             String?            @db.Text
+  doctorNotes        String?            @db.Text
+  validUntil         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  items              PrescriptionItem[]
+  pharmacySales      PharmacySale[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([prescriptionNumber])
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  prescriptionId String       @db.VarChar(36)
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicineId     String?      @db.VarChar(36)
+  medicine       Medicine?    @relation(fields: [medicineId], references: [id])
+  medicineName   String       @db.VarChar(150)
+  dosage         String       @db.VarChar(100)
+  form           String       @db.VarChar(100)
+  quantity       Int          @default(1)
+  frequency      String       @db.VarChar(100)
+  duration       String       @db.VarChar(100)
+  route          String?      @default("Voie orale") @db.VarChar(100)
+  instructions   String?      @db.VarChar(255)
+
+  @@index([prescriptionId])
+}
+
+// -------------------------------------------------------------
+// PHARMACIE, MÉDICAMENTS & GESTION DES STOCKS
+// -------------------------------------------------------------
+
+model MedicineCategory {
+  id          String     @id @default(uuid()) @db.VarChar(36)
+  name        String     @unique @db.VarChar(100)
+  description String?    @db.VarChar(255)
+  medicines   Medicine[]
+  createdAt   DateTime   @default(now())
+}
+
+model Medicine {
+  id                String             @id @default(uuid()) @db.VarChar(36)
+  clinicId          String             @db.VarChar(36)
+  clinic            Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name              String             @db.VarChar(100)
+  genericName       String             @db.VarChar(100)
+  categoryId        String             @db.VarChar(36)
+  category          MedicineCategory   @relation(fields: [categoryId], references: [id])
+  manufacturer      String?            @db.VarChar(150)
+  dosage            String             @db.VarChar(100)
+  form              String             @db.VarChar(100)
+  purchasePrice     Float
+  sellingPrice      Float
+  currentStock      Int                @default(0)
+  minStockLevel     Int                @default(10)
+  expiryDate        DateTime?
+  location          String?            @default("Rayon A - Tiroir 1") @db.VarChar(100)
+  barcode           String?            @db.VarChar(100)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  prescriptionItems PrescriptionItem[]
+  stockEntries      StockEntry[]
+  stockExits        StockExit[]
+  saleItems         PharmacySaleItem[]
+
+  @@index([clinicId])
+  @@index([categoryId])
+  @@index([name])
+  @@index([genericName])
+}
+
+model Supplier {
+  id            String       @id @default(uuid()) @db.VarChar(36)
+  clinicId      String       @db.VarChar(36)
+  clinic        Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name          String       @db.VarChar(150)
+  contactPerson String?      @db.VarChar(100)
+  phone         String       @db.VarChar(50)
+  email         String?      @db.VarChar(150)
+  address       String?      @db.VarChar(255)
+  taxId         String?      @db.VarChar(100)
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  stockEntries  StockEntry[]
+
+  @@index([clinicId])
+}
+
+model StockEntry {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  medicineId  String    @db.VarChar(36)
+  medicine    Medicine  @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  supplierId  String?   @db.VarChar(36)
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  quantity    Int
+  unitCost    Float
+  totalCost   Float
+  batchNumber String?   @db.VarChar(100)
+  expiryDate  DateTime?
+  entryDate   DateTime  @default(now())
+  notes       String?   @db.VarChar(255)
+  createdById String?   @db.VarChar(36)
+
+  @@index([medicineId])
+  @@index([supplierId])
+}
+
+enum StockExitReason {
+  EXPIRED
+  DAMAGED
+  INVENTORY_ADJUSTMENT
+  RETURN_TO_SUPPLIER
+  OTHER
+}
+
+model StockExit {
+  id          String          @id @default(uuid()) @db.VarChar(36)
+  medicineId  String          @db.VarChar(36)
+  medicine    Medicine        @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  quantity    Int
+  reason      StockExitReason @default(EXPIRED)
+  exitDate    DateTime        @default(now())
+  notes       String?         @db.VarChar(255)
+  createdById String?         @db.VarChar(36)
+
+  @@index([medicineId])
+}
+
+// -------------------------------------------------------------
+// VENTE PHARMACIE (POS)
+// -------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  CREDIT_CARD
+  BANK_TRANSFER
+}
+
+enum SaleStatus {
+  COMPLETED
+  REFUNDED
+  CANCELLED
+}
+
+model PharmacySale {
+  id               String             @id @default(uuid()) @db.VarChar(36)
+  saleNumber       String             @unique @db.VarChar(50)
+  clinicId         String             @db.VarChar(36)
+  clinic           Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  prescriptionId   String?            @db.VarChar(36)
+  prescription     Prescription?      @relation(fields: [prescriptionId], references: [id])
+  patientId        String?            @db.VarChar(36)
+  patient          Patient?           @relation(fields: [patientId], references: [id])
+  customerName     String?            @default("Client de passage") @db.VarChar(150)
+  customerPhone    String?            @db.VarChar(50)
+  subtotal         Float
+  discount         Float              @default(0)
+  total            Float
+  paymentMethod    PaymentMethod      @default(CASH)
+  paymentReference String?            @db.VarChar(100)
+  status           SaleStatus         @default(COMPLETED)
+  saleDate         DateTime           @default(now())
+  cashierId        String?            @db.VarChar(36)
+  createdAt        DateTime           @default(now())
+
+  items            PharmacySaleItem[]
+
+  @@index([clinicId])
+  @@index([saleNumber])
+  @@index([saleDate])
+}
+
+model PharmacySaleItem {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  pharmacySaleId String       @db.VarChar(36)
+  pharmacySale   PharmacySale @relation(fields: [pharmacySaleId], references: [id], onDelete: Cascade)
+  medicineId     String       @db.VarChar(36)
+  medicine       Medicine     @relation(fields: [medicineId], references: [id])
+  medicineName   String       @db.VarChar(150)
+  quantity       Int
+  unitPrice      Float
+  totalPrice     Float
+
+  @@index([pharmacySaleId])
+  @@index([medicineId])
+}
+
+// -------------------------------------------------------------
+// FACTURATION, PAIEMENTS & CAISSE
+// -------------------------------------------------------------
+
+enum InvoiceStatus {
+  PAID
+  PARTIALLY_PAID
+  UNPAID
+  CANCELLED
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.VarChar(36)
+  invoiceNumber  String        @unique @db.VarChar(50)
+  clinicId       String        @db.VarChar(36)
+  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId      String        @db.VarChar(36)
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  consultationId String?       @unique @db.VarChar(36)
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+  totalAmount    Float
+  discountAmount Float         @default(0)
+  taxAmount      Float         @default(0)
+  paidAmount     Float         @default(0)
+  balance        Float         @default(0)
+  status         InvoiceStatus @default(UNPAID)
+  dueDate        DateTime?
+  issuedDate     DateTime      @default(now())
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  items          InvoiceItem[]
+  payments       Payment[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([invoiceNumber])
+  @@index([status])
+}
+
+enum InvoiceItemType {
+  CONSULTATION
+  SPECIALIST_CONSULTATION
+  MEDICAL_PROCEDURE
+  LABORATORY_TEST
+  PHARMACY
+  ROOM_HOSPITALIZATION
+  OTHER_SERVICE
+}
+
+model InvoiceItem {
+  id          String          @id @default(uuid()) @db.VarChar(36)
+  invoiceId   String          @db.VarChar(36)
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String          @db.VarChar(255)
+  itemType    InvoiceItemType @default(CONSULTATION)
+  quantity    Int             @default(1)
+  unitPrice   Float
+  totalPrice  Float
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.VarChar(36)
+  paymentNumber String        @unique @db.VarChar(50)
+  invoiceId     String        @db.VarChar(36)
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod PaymentMethod @default(CASH)
+  paymentDate   DateTime      @default(now())
+  reference     String?       @db.VarChar(100)
+  notes         String?       @db.VarChar(255)
+  receivedById  String?       @db.VarChar(36)
+  createdAt     DateTime      @default(now())
+
+  @@index([invoiceId])
+}
+
+enum CashTransactionType {
+  INCOME
+  EXPENSE
+}
+
+model CashTransaction {
+  id              String              @id @default(uuid()) @db.VarChar(36)
+  clinicId        String              @db.VarChar(36)
+  clinic          Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  type            CashTransactionType
+  category        String              @db.VarChar(100)
+  amount          Float
+  paymentMethod   PaymentMethod       @default(CASH)
+  reference       String?             @db.VarChar(100)
+  description     String              @db.VarChar(255)
+  transactionDate DateTime            @default(now())
+  performedById   String?             @db.VarChar(36)
+  performedBy     User?               @relation(fields: [performedById], references: [id])
+  createdAt       DateTime            @default(now())
+
+  @@index([clinicId])
+  @@index([type])
+  @@index([transactionDate])
+}
+
+// -------------------------------------------------------------
+// NOTIFICATIONS & AUDIT TRAIL
+// -------------------------------------------------------------
+
+enum NotificationType {
+  LOW_STOCK
+  EXPIRY_WARNING
+  APPOINTMENT_REMINDER
+  NEW_PATIENT
+  NEW_PRESCRIPTION
+  PAYMENT_RECEIVED
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.VarChar(36)
+  clinicId  String           @db.VarChar(36)
+  clinic    Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  userId    String?          @db.VarChar(36)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String           @db.VarChar(150)
+  message   String           @db.Text
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  linkUrl   String?          @db.VarChar(255)
+  createdAt DateTime         @default(now())
+
+  @@index([clinicId])
+  @@index([userId])
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  DISPENSE
+  PAYMENT
+}
+
+model AuditLog {
+  id        String      @id @default(uuid()) @db.VarChar(36)
+  clinicId  String      @db.VarChar(36)
+  clinic    Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  userId    String?     @db.VarChar(36)
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    AuditAction
+  entity    String      @db.VarChar(100)
+  entityId  String?     @db.VarChar(100)
+  details   String?     @db.Text
+  ipAddress String?     @db.VarChar(50)
+  userAgent String?     @db.VarChar(255)
+  createdAt DateTime    @default(now())
+
+  @@index([clinicId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+// -------------------------------------------------------------
+// PARAMÈTRES DE L'APPLICATION
+// -------------------------------------------------------------
+
+model Setting {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  clinicId  String   @db.VarChar(36)
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  key       String   @db.VarChar(80)
+  value     String   @db.Text
+  category  String   @default("general") @db.VarChar(50)
+  isPublic  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([clinicId, key])
+}
+
+// -------------------------------------------------------------
+// MESSAGERIE INTERNE (CHAT INTER-UTILISATEURS)
+// -------------------------------------------------------------
+
+model ChatMessage {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  clinicId   String    @db.VarChar(36)
+  clinic     Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  senderId   String    @db.VarChar(36)
+  sender     User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String    @db.VarChar(36)
+  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String    @db.Text
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([clinicId])
+  @@index([senderId, receiverId])
+  @@index([receiverId, isRead])
+  @@index([createdAt])
+}
+
