@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma, { getDatabaseUrl } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const dbUrl = process.env.DATABASE_URL || '';
+  const dbUrl = getDatabaseUrl();
   
   let maskedUrl = 'NON_DEFINI';
   let parsedHost = '';
