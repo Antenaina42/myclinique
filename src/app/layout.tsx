@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import AppPreloader from '@/components/ui/AppPreloader';
 
 export const metadata: Metadata = {
   title: 'MY CLINIQUE — La gestion intelligente de votre clinique',
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className="h-full">
       <body className="h-full bg-[#F5F8FC] text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
+        <AppPreloader />
         {children}
       </body>
     </html>
