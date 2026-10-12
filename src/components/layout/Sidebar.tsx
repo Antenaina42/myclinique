@@ -547,7 +547,20 @@ export default function Sidebar({ user, clinicName, isOpen, onToggle, onCloseMob
               </div>
             </Link>
 
-            <form action="/api/auth/logout" method="POST">
+            <form
+              action="/api/auth/logout"
+              method="POST"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { Accept: 'application/json' },
+                  });
+                } catch {}
+                window.location.href = '/login';
+              }}
+            >
               <button
                 type="submit"
                 title="Déconnexion"

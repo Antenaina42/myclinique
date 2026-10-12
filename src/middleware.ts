@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { hasModuleAccess } from '@/lib/permissions';
 import { RoleType } from '@/types';
+import { getSafeRedirectUrl } from '@/lib/url';
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'myclinique_jwt_secret_key_2026_super_secure_987654321_hospital'
@@ -51,13 +52,12 @@ export async function middleware(request: NextRequest) {
 
   // 1. Utilisateur connecté tentant d'accéder à /login -> Rediriger vers /dashboard
   if (isPublicPath && pathname === '/login' && sessionUser) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(getSafeRedirectUrl('/dashboard', request));
   }
 
   // 2. Utilisateur non connecté sur une route protégée -> Rediriger vers /login
   if (!isPublicPath && !sessionUser) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(getSafeRedirectUrl('/login', request));
   }
 
   // 3. Contrôle des autorisations d'accès par rôle (RBAC)
@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
 
     if (!isAllowed) {
       // Redirection immédiate vers le dashboard avec alerte d'accès non autorisé
-      const redirectUrl = new URL('/dashboard', request.url);
+      const redirectUrl = getSafeRedirectUrl('/dashboard', request);
       redirectUrl.searchParams.set('unauthorized', '1');
       return NextResponse.redirect(redirectUrl);
     }

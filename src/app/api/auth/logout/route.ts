@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clearSessionCookie, getSession } from '@/lib/auth';
 import { logAuditAction } from '@/lib/audit';
 import { AuditAction } from '@prisma/client';
+import { getSafeRedirectUrl } from '@/lib/url';
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -17,10 +18,18 @@ export async function POST(request: NextRequest) {
   }
 
   await clearSessionCookie();
-  return NextResponse.redirect(new URL('/login', request.url));
+
+  const acceptsJson = request.headers.get('accept')?.includes('application/json');
+  if (acceptsJson) {
+    return NextResponse.json({ success: true, redirect: '/login' });
+  }
+
+  const redirectUrl = getSafeRedirectUrl('/login', request);
+  return NextResponse.redirect(redirectUrl);
 }
 
 export async function GET(request: NextRequest) {
   await clearSessionCookie();
-  return NextResponse.redirect(new URL('/login', request.url));
+  const redirectUrl = getSafeRedirectUrl('/login', request);
+  return NextResponse.redirect(redirectUrl);
 }

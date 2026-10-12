@@ -148,7 +148,20 @@ export default function Topbar({ user, clinicName, onToggleSidebar }: TopbarProp
                   </div>
 
                   <div className="border-t border-slate-100 pt-1">
-                    <form action="/api/auth/logout" method="POST">
+                    <form
+                      action="/api/auth/logout"
+                      method="POST"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                          await fetch('/api/auth/logout', {
+                            method: 'POST',
+                            headers: { Accept: 'application/json' },
+                          });
+                        } catch {}
+                        window.location.href = '/login';
+                      }}
+                    >
                       <button
                         type="submit"
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
