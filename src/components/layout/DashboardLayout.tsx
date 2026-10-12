@@ -40,7 +40,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F5F8FC]">
+    <div className="min-h-screen bg-[#F5F8FC] print:bg-white print:min-h-0">
       {/* Sidebar */}
       <Sidebar
         user={user}
@@ -51,7 +51,7 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
       />
 
       {/* Main Wrapper */}
-      <div className="lg:pl-64 flex flex-col min-h-screen transition-all duration-300">
+      <div className="lg:pl-64 flex flex-col min-h-screen transition-all duration-300 print:pl-0 print:min-h-0 print:block">
         <Topbar
           user={user}
           clinicName={clinicName}
@@ -59,13 +59,15 @@ export default function DashboardLayout({ user, children }: DashboardLayoutProps
         />
 
         {/* Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0">
           {children}
         </main>
       </div>
 
       {/* Messenger Chat Bubble & Docked Box */}
-      <MessengerWidget currentUser={user} />
+      <div className="print:hidden">
+        <MessengerWidget currentUser={user} />
+      </div>
     </div>
   );
 }

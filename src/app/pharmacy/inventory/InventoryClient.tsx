@@ -345,11 +345,11 @@ export default function InventoryClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-4 print:p-6 print:m-0 print:w-full print:bg-white">
       {/* Notifications toast */}
       {notification && (
         <div
-          className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold ${
+          className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold print:hidden ${
             notification.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
               : 'bg-rose-50 text-rose-800 border-rose-200'
@@ -662,22 +662,22 @@ export default function InventoryClient({
                 <th className="py-3.5 px-4">Catégorie</th>
                 <th className="py-3.5 px-4 text-center">Théorique</th>
                 {isCountingMode && (
-                  <th className="py-3.5 px-4 text-center bg-amber-50/80 text-amber-900 border-x border-amber-200">
+                  <th className="py-3.5 px-4 text-center bg-amber-50/80 text-amber-900 border-x border-amber-200 print:hidden">
                     Physique Compté
                   </th>
                 )}
                 {isCountingMode && (
-                  <th className="py-3.5 px-4 text-center bg-amber-50/80 text-amber-900 border-r border-amber-200">
+                  <th className="py-3.5 px-4 text-center bg-amber-50/80 text-amber-900 border-r border-amber-200 print:hidden">
                     Écart
                   </th>
                 )}
                 {/* Colonne réservée au comptage manuel à l'impression */}
-                <th className="py-3.5 px-4 text-center hidden print:table-cell border-l">
+                <th className="py-3.5 px-4 text-center hidden print:table-cell border-l border-slate-300 w-36">
                   Comptage Réel
                 </th>
-                {isAdmin && <th className="py-3.5 px-4 text-right">P. Achat</th>}
-                <th className="py-3.5 px-4 text-right">P. Vente</th>
-                <th className="py-3.5 px-4 text-right">Valeur Stock</th>
+                {isAdmin && <th className="py-3.5 px-4 text-right print:hidden">P. Achat</th>}
+                <th className="py-3.5 px-4 text-right print:hidden">P. Vente</th>
+                <th className="py-3.5 px-4 text-right print:hidden">Valeur Stock</th>
                 <th className="py-3.5 px-4 text-center">Péremption</th>
                 <th className="py-3.5 px-4 text-center print:hidden">Action</th>
               </tr>
@@ -753,7 +753,7 @@ export default function InventoryClient({
 
                       {/* Mode Saisie Comptage Physique */}
                       {isCountingMode && (
-                        <td className="py-2.5 px-3 text-center bg-amber-50/40 border-x border-amber-200/80">
+                        <td className="py-2.5 px-3 text-center bg-amber-50/40 border-x border-amber-200/80 print:hidden">
                           <input
                             type="number"
                             min="0"
@@ -766,7 +766,7 @@ export default function InventoryClient({
 
                       {/* Écart calculé */}
                       {isCountingMode && (
-                        <td className="py-3 px-3 text-center bg-amber-50/40 border-r border-amber-200/80 font-mono font-bold">
+                        <td className="py-3 px-3 text-center bg-amber-50/40 border-r border-amber-200/80 font-mono font-bold print:hidden">
                           {diff === 0 ? (
                             <span className="text-slate-400 font-semibold text-[11px]">0 (OK)</span>
                           ) : diff > 0 ? (
@@ -782,24 +782,24 @@ export default function InventoryClient({
                       )}
 
                       {/* Ligne vide pour comptage papier imprimable */}
-                      <td className="py-3 px-4 text-center hidden print:table-cell border-l border-slate-300">
-                        <div className="w-16 h-6 border-b-2 border-slate-400 mx-auto" />
+                      <td className="py-3 px-4 text-center hidden print:table-cell border-l border-slate-300 print:py-2 print:w-36">
+                        <div className="w-24 h-6 border-b border-slate-400 mx-auto" />
                       </td>
 
                       {/* Prix d'Achat (Visible pour Admins uniquement) */}
                       {isAdmin && (
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">
+                        <td className="py-3 px-4 text-right font-mono text-slate-600 print:hidden">
                           {formatCurrency(med.purchasePrice)}
                         </td>
                       )}
 
                       {/* Prix de Vente */}
-                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800">
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800 print:hidden">
                         {formatCurrency(med.sellingPrice)}
                       </td>
 
                       {/* Valeur Globale du Stock */}
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 print:hidden">
                         {formatCurrency(med.currentStock * (isAdmin ? med.purchasePrice : med.sellingPrice))}
                       </td>
 

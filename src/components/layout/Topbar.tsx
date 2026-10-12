@@ -29,7 +29,7 @@ export default function Topbar({ user, clinicName, onToggleSidebar }: TopbarProp
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white border-b border-slate-200 print:hidden">
         {/* Left: Sidebar Toggle & Search Bar Trigger */}
         <div className="flex items-center gap-3 sm:gap-4">
           <button

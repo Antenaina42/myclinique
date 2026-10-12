@@ -74,10 +74,25 @@ body {
 
 /* Print specific rules for medical PDF and printing */
 @media print {
-  .no-print {
-    display: none !important;
+  @page {
+    size: auto;
+    margin: 0mm;
   }
-  body {
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
     background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header,
+  aside,
+  nav,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
   }
 }

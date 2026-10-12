@@ -226,7 +226,7 @@ export default function MessengerWidget({ currentUser }: MessengerWidgetProps) {
     <>
       {/* 1. FLOATING CHAT BUBBLE (Messenger Button) */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 print:hidden">
           {totalUnread > 0 && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full shadow-lg border border-slate-200 text-xs font-semibold text-slate-700 animate-bounce">
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
@@ -259,7 +259,7 @@ export default function MessengerWidget({ currentUser }: MessengerWidgetProps) {
       {/* 2. MESSENGER DOCKED CHAT WINDOW */}
       {isOpen && (
         <div
-          className={`fixed bottom-6 right-6 z-50 w-[360px] sm:w-[390px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden transition-all duration-300 ${
+          className={`fixed bottom-6 right-6 z-50 w-[360px] sm:w-[390px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden transition-all duration-300 print:hidden ${
             isMinimized ? 'h-14' : 'h-[540px]'
           }`}
         >
