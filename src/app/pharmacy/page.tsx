@@ -15,6 +15,7 @@ import {
   Layers,
   Truck,
   ShoppingCart,
+  Boxes,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
@@ -90,6 +91,14 @@ export default async function PharmacyPage() {
                 <span>Nouveau Médicament</span>
               </Link>
             )}
+
+            <Link
+              href="/pharmacy/inventory"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-500/20 transition-colors"
+            >
+              <Boxes className="w-4 h-4" />
+              <span>Inventaire Physique</span>
+            </Link>
 
             <Link
               href="/pharmacy/sales"

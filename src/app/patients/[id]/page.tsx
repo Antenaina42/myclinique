@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import prisma from '@/lib/prisma';
 import PatientDetailTabs from './PatientDetailTabs';
 import Link from 'next/link';
+import { parseClinicalMetadata } from '@/lib/clinicalMetadata';
 
 interface PatientDetailPageProps {
   params: { id: string };
@@ -34,7 +35,9 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
             },
           },
           vitalSigns: true,
-          prescription: true,
+          prescription: {
+            include: { items: true },
+          },
         },
         orderBy: { consultationDate: 'desc' },
       },
@@ -73,6 +76,8 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
     notFound();
   }
 
+  const clinicalMetadata = parseClinicalMetadata(patient.medicalRecord?.generalNotes);
+
   return (
     <DashboardLayout user={session}>
       <div className="space-y-6">
@@ -85,8 +90,12 @@ export default async function PatientDetailPage({ params }: PatientDetailPagePro
           <span className="text-slate-600 font-medium">{patient.lastName} {patient.firstName}</span>
         </div>
 
-        {/* Patient Interactive View with 6 Tabs */}
-        <PatientDetailTabs patient={patient} userRole={session.role} />
+        {/* DoctorDesk-grade Patient Interactive Detail View */}
+        <PatientDetailTabs
+          patient={patient}
+          initialClinicalMetadata={clinicalMetadata}
+          userRole={session.role}
+        />
       </div>
     </DashboardLayout>
   );

@@ -23,6 +23,7 @@ import {
   Menu,
   X,
   PlusCircle,
+  Boxes,
 } from 'lucide-react';
 import { AuthUser } from '@/types';
 import { getRoleBadgeLabel } from '@/lib/permissions';
@@ -125,6 +126,7 @@ export default function Sidebar({ user, clinicName, isOpen, onToggle, onCloseMob
                 subItems: [
                   { label: 'Vue d’ensemble', href: '/pharmacy' },
                   { label: 'Catalogue Médicaments', href: '/pharmacy/medicines' },
+                  { label: 'Inventaire Physique', href: '/pharmacy/inventory', icon: Boxes },
                   { label: 'Stocks & Mouvements', href: '/pharmacy/stock' },
                   { label: 'Caisse Ventes (POS)', href: '/pharmacy/sales' },
                   { label: 'Fournisseurs', href: '/pharmacy/suppliers' },
@@ -348,6 +350,7 @@ export default function Sidebar({ user, clinicName, isOpen, onToggle, onCloseMob
                 subItems: [
                   { label: 'Vue d’ensemble', href: '/pharmacy' },
                   { label: 'Catalogue Médicaments', href: '/pharmacy/medicines' },
+                  { label: 'Inventaire Physique', href: '/pharmacy/inventory', icon: Boxes },
                   { label: 'Stocks & Mouvements', href: '/pharmacy/stock' },
                   { label: 'Caisse Ventes (POS)', href: '/pharmacy/sales' },
                   { label: 'Fournisseurs', href: '/pharmacy/suppliers' },
