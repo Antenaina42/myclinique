@@ -22,6 +22,7 @@ import {
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/formatters';
 import ThermalReceiptPreview from '@/components/pharmacy/ThermalReceiptPreview';
 import { ThermalReceiptData, printThermalReceipt } from '@/lib/thermalReceipt';
+import PatientSelect from '@/components/ui/PatientSelect';
 
 interface POSClientProps {
   clinic: any;
@@ -546,21 +547,15 @@ export default function POSClient({
             {/* Customer Information */}
             <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Rattacher à un patient (Optionnel)
-                </label>
-                <select
+                <PatientSelect
+                  patients={patients}
                   value={selectedPatientId}
-                  onChange={(e) => handlePatientSelect(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white"
-                >
-                  <option value="">Client de passage non répertorié</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.lastName} {p.firstName} ({p.patientNumber})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(patId) => handlePatientSelect(patId)}
+                  label="Rattacher à un patient (Optionnel)"
+                  placeholder="Rechercher ou sélectionner un patient..."
+                  allowClear={true}
+                  clearLabel="Client de passage non répertorié"
+                />
               </div>
 
               {!selectedPatientId && (

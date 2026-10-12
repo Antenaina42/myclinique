@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, User, Stethoscope, Save, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import PatientSelect from '@/components/ui/PatientSelect';
 
 interface AppointmentFormClientProps {
   patients: any[];
@@ -67,19 +68,13 @@ export default function AppointmentFormClient({ patients, doctors }: Appointment
       )}
 
       <div>
-        <label className="block font-semibold text-slate-700 mb-1">Patient *</label>
-        <select
+        <PatientSelect
+          label="Patient"
+          patients={patients}
           value={patientId}
-          onChange={(e) => setPatientId(e.target.value)}
+          onChange={(id) => setPatientId(id)}
           required
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-medium"
-        >
-          {patients.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.lastName} {p.firstName} ({p.patientNumber})
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>

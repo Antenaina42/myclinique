@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CreditCard, Plus, Trash2, Save, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/formatters';
+import PatientSelect from '@/components/ui/PatientSelect';
 
 interface InvoiceFormClientProps {
   patients: any[];
@@ -98,19 +99,13 @@ export default function InvoiceFormClient({ patients, initialPatientId }: Invoic
       )}
 
       <div>
-        <label className="block font-semibold text-slate-700 mb-1">Patient à facturer *</label>
-        <select
+        <PatientSelect
+          label="Patient à facturer"
+          patients={patients}
           value={patientId}
-          onChange={(e) => setPatientId(e.target.value)}
+          onChange={(id) => setPatientId(id)}
           required
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-medium"
-        >
-          {patients.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.lastName} {p.firstName} ({p.patientNumber})
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {/* Invoice Lines */}

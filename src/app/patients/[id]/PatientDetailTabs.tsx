@@ -44,6 +44,9 @@ import ClinicalStatusModal from '@/components/patient/ClinicalStatusModal';
 import HospitalizationModal from '@/components/patient/HospitalizationModal';
 import MedicalImageViewerModal from '@/components/patient/MedicalImageViewerModal';
 import VitalsEvolutionModal from '@/components/patient/VitalsEvolutionModal';
+import PatientDocumentModal from '@/components/patient/PatientDocumentModal';
+import AnalysisFormModal from '@/components/patient/AnalysisFormModal';
+import AnalysisResultModal from '@/components/patient/AnalysisResultModal';
 
 interface PatientDetailTabsProps {
   patient: any;
@@ -106,6 +109,41 @@ export default function PatientDetailTabs({
   }>({ title: '' });
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
 
+  // Dynamic documents & prescriptions state
+  const [documents, setDocuments] = useState<any[]>(patient.documents || []);
+  const [prescriptions, setPrescriptions] = useState<any[]>(patient.prescriptions || []);
+
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [selectedPrescriptionForResults, setSelectedPrescriptionForResults] = useState<any | null>(null);
+
+  const handleDocumentAdded = (newDoc: any) => {
+    setDocuments((prev) => [newDoc, ...prev]);
+  };
+
+  const handleAnalysisAdded = (newDoc: any) => {
+    setDocuments((prev) => [newDoc, ...prev]);
+  };
+
+  const handleResultsSaved = async () => {
+    try {
+      const res = await fetch(`/api/prescriptions`);
+      if (res.ok) {
+        const allRx = await res.json();
+        const patientRx = allRx.filter((r: any) => r.patientId === patient.id);
+        if (patientRx.length) setPrescriptions(patientRx);
+      }
+    } catch {}
+    try {
+      const docRes = await fetch(`/api/patients/${patient.id}/documents`);
+      if (docRes.ok) {
+        const docData = await docRes.json();
+        if (docData.documents) setDocuments(docData.documents);
+      }
+    } catch {}
+  };
+
   // Timeline Filter
   const [timelineFilter, setTimelineFilter] = useState<string>('ALL');
 
@@ -134,8 +172,8 @@ export default function PatientDetailTabs({
   );
 
   // Filtered documents
-  const analysesDocs = (patient.documents || []).filter((d: any) => d.category === 'LAB_REPORT');
-  const imagingDocs = (patient.documents || []).filter((d: any) => d.category === 'XRAY_IMAGING');
+  const analysesDocs = documents.filter((d: any) => d.category === 'LAB_REPORT');
+  const imagingDocs = documents.filter((d: any) => d.category === 'XRAY_IMAGING');
 
   // Unified Timeline Events
   const timelineEvents: Array<{
@@ -290,14 +328,14 @@ export default function PatientDetailTabs({
     { id: 'summary', label: 'Résumé Clinique', icon: User, count: null },
     { id: 'consultations', label: 'Consultations', icon: Stethoscope, count: patient.consultations?.length || 0 },
     { id: 'appointments', label: 'Rendez-vous', icon: Calendar, count: patient.appointments?.length || 0 },
-    { id: 'prescriptions', label: 'Ordonnances', icon: FileText, count: patient.prescriptions?.length || 0 },
+    { id: 'prescriptions', label: 'Ordonnances', icon: FileText, count: prescriptions.length },
     { id: 'analyses', label: 'Analyses & Labo', icon: FlaskConical, count: analysesDocs.length },
     { id: 'imaging', label: 'Imagerie', icon: FileImage, count: imagingDocs.length },
     { id: 'hospitalizations', label: 'Hospitalisations', icon: Building2, count: hospitalizations.length },
     { id: 'treatments', label: 'Traitements', icon: Pill, count: null },
     { id: 'history', label: 'Antécédents', icon: ShieldCheck, count: null },
     { id: 'timeline', label: 'Chronologie', icon: Clock, count: timelineEvents.length },
-    { id: 'documents', label: 'Documents', icon: FolderOpen, count: patient.documents?.length || 0 },
+    { id: 'documents', label: 'Documents', icon: FolderOpen, count: documents.length },
     { id: 'invoices', label: 'Factures & Règlements', icon: CreditCard, count: patient.invoices?.length || 0 },
   ];
 
@@ -1135,7 +1173,7 @@ export default function PatientDetailTabs({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-sm">
-                Ordonnances Médicales ({patient.prescriptions.length})
+                Ordonnances Médicales ({prescriptions.length})
               </h3>
               <Link
                 href={`/prescriptions/new?patientId=${patient.id}`}
@@ -1146,70 +1184,212 @@ export default function PatientDetailTabs({
               </Link>
             </div>
 
-            {patient.prescriptions.length === 0 ? (
+            {prescriptions.length === 0 ? (
               <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
                 Aucune ordonnance délivrée pour ce patient.
               </div>
             ) : (
-              patient.prescriptions.map((rx: any) => (
-                <div
-                  key={rx.id}
-                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-sm">{rx.prescriptionNumber}</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
-                          Active
-                        </span>
-                      </div>
-                      <span className="text-xs text-slate-400">
-                        Délivrée le {formatDate(rx.createdAt)} par Dr. {rx.doctor?.user?.lastName} ({rx.doctor?.specialty?.name})
-                      </span>
-                    </div>
+              prescriptions.map((rx: any) => {
+                const meta = (() => {
+                  try {
+                    if (rx.doctorNotes && rx.doctorNotes.startsWith('{')) return JSON.parse(rx.doctorNotes);
+                  } catch {}
+                  return null;
+                })();
 
-                    <a
-                      href={`/api/prescriptions/${rx.id}/pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors self-start sm:self-auto"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Télécharger Ordonnance PDF</span>
-                    </a>
-                  </div>
+                const isExamRx =
+                  meta?.type === 'EXAM_ANALYSIS' ||
+                  rx.items?.some((i: any) => i.form?.includes('Examen') || i.form?.includes('Analyse'));
 
-                  {/* Medicines List */}
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Médicaments prescrits ({rx.items.length}) :
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {rx.items.map((item: any, idx: number) => (
-                        <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800">
-                              {item.medicineName} ({item.dosage})
+                const resultsPhotos: any[] = meta?.resultsPhotos || [];
+                const resultsStatus = meta?.resultsStatus;
+                const resultsDate = meta?.resultsDate;
+                const resultsNotes = meta?.resultsNotes;
+
+                return (
+                  <div
+                    key={rx.id}
+                    className={`p-5 bg-white rounded-2xl border shadow-xs space-y-4 ${
+                      isExamRx ? 'border-emerald-200 ring-1 ring-emerald-500/10' : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-sm">{rx.prescriptionNumber}</span>
+                          {isExamRx ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <FlaskConical className="w-3 h-3 text-emerald-600" />
+                              <span>Prescription d'Analyses</span>
                             </span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-700">
-                              {item.form}
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                              Active
                             </span>
-                          </div>
-                          <p className="text-slate-600 mt-1 font-medium">
-                            {item.frequency} • {item.duration} (Qté : {item.quantity})
-                          </p>
-                          {item.instructions && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 italic">
-                              Instructions : {item.instructions}
-                            </p>
+                          )}
+
+                          {resultsStatus && (
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                resultsStatus === 'COMPLETED'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : resultsStatus === 'ABNORMAL'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              {resultsStatus === 'COMPLETED'
+                                ? '✅ Résultats normaux'
+                                : resultsStatus === 'ABNORMAL'
+                                ? '⚠️ Anomalie détectée'
+                                : '⏳ En attente'}
+                            </span>
                           )}
                         </div>
-                      ))}
+                        <span className="text-xs text-slate-400">
+                          Délivrée le {formatDate(rx.createdAt)} par Dr. {rx.doctor?.user?.lastName} ({rx.doctor?.specialty?.name})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPrescriptionForResults(rx);
+                            setIsResultModalOpen(true);
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                            resultsPhotos.length > 0
+                              ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <FlaskConical className="w-3.5 h-3.5" />
+                          <span>
+                            {resultsPhotos.length > 0
+                              ? `Clichés & Résultats (${resultsPhotos.length})`
+                              : isExamRx
+                              ? 'Saisir Résultats & Clichés'
+                              : 'Attacher Résultats'}
+                          </span>
+                        </button>
+
+                        <a
+                          href={`/api/prescriptions/${rx.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Télécharger PDF</span>
+                        </a>
+                      </div>
                     </div>
+
+                    {/* Items List */}
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        {isExamRx
+                          ? `Analyses et examens demandés (${rx.items.length}) :`
+                          : `Médicaments prescrits (${rx.items.length}) :`}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {rx.items.map((item: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border ${
+                              isExamRx ? 'bg-emerald-50/40 border-emerald-200/80' : 'bg-slate-50 border-slate-200/80'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800">
+                                {item.medicineName} {item.dosage && `(${item.dosage})`}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                  isExamRx ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {item.form}
+                              </span>
+                            </div>
+                            <p className="text-slate-600 mt-1 font-medium">
+                              {item.frequency} • {item.duration}
+                            </p>
+                            {item.instructions && (
+                              <p className="text-[11px] text-slate-400 mt-0.5 italic">
+                                Instructions : {item.instructions}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Attached Photos if present */}
+                    {resultsPhotos.length > 0 && (
+                      <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                            <FileImage className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Clichés et feuilles de résultats joints ({resultsPhotos.length})</span>
+                          </span>
+                          {resultsDate && (
+                            <span className="text-[10px] text-purple-700 font-semibold">
+                              Réalisé le : {formatDate(resultsDate)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2.5 pt-1">
+                          {resultsPhotos.map((photo: any, pIdx: number) => {
+                            const isImg =
+                              (photo.mime && photo.mime.includes('image')) ||
+                              (photo.url && photo.url.match(/\.(jpg|jpeg|png|webp)$/i));
+
+                            return (
+                              <button
+                                key={pIdx}
+                                type="button"
+                                onClick={() =>
+                                  handleOpenImageViewer({
+                                    title: `Résultats ${rx.prescriptionNumber} - ${photo.name || 'Cliché'}`,
+                                    fileUrl: photo.url || photo.path,
+                                    notes: resultsNotes || meta?.doctorComment,
+                                    createdAt: resultsDate || rx.createdAt,
+                                    category: 'LAB_REPORT',
+                                  })
+                                }
+                                className="group p-1.5 bg-white border border-purple-200 hover:border-purple-500 rounded-xl flex items-center gap-2 shadow-2xs transition-all text-left"
+                              >
+                                {isImg ? (
+                                  <img
+                                    src={photo.url || photo.path}
+                                    alt={photo.name}
+                                    className="w-10 h-10 rounded-lg object-cover border border-slate-200 group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+                                    <FileText className="w-5 h-5" />
+                                  </div>
+                                )}
+                                <div className="pr-1 truncate max-w-[140px]">
+                                  <p className="text-[11px] font-bold text-slate-800 truncate group-hover:text-purple-700">
+                                    {photo.name || `Cliché #${pIdx + 1}`}
+                                  </p>
+                                  <span className="text-[9px] text-slate-400 flex items-center gap-0.5">
+                                    <Eye className="w-2.5 h-2.5" /> Voir le cliché
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -1223,44 +1403,105 @@ export default function PatientDetailTabs({
               <h3 className="font-bold text-slate-800 text-sm">
                 Analyses Médicales & Bilans de Laboratoire ({analysesDocs.length})
               </h3>
+              <button
+                type="button"
+                onClick={() => setIsAnalysisModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-2xs"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Saisir des résultats d'analyse</span>
+              </button>
             </div>
 
             {analysesDocs.length === 0 ? (
-              <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
-                Aucun compte-rendu d'analyse biologique classé pour ce patient.
+              <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400 text-xs space-y-3">
+                <FlaskConical className="w-10 h-10 mx-auto text-slate-300" />
+                <p>Aucun compte-rendu d'analyse biologique classé pour ce patient.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsAnalysisModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Saisir les premiers résultats</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {analysesDocs.map((doc: any) => (
-                  <div key={doc.id} className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-2">
-                        <FlaskConical className="w-4 h-4 text-emerald-600" />
-                        <span className="font-bold text-sm text-slate-900">{doc.title}</span>
+                {analysesDocs.map((doc: any) => {
+                  const isImg =
+                    (doc.fileType && doc.fileType.includes('image')) ||
+                    (doc.fileUrl && doc.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i));
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                          <div className="flex items-center gap-2">
+                            <FlaskConical className="w-4 h-4 text-emerald-600" />
+                            <span className="font-bold text-sm text-slate-900">{doc.title}</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400">{formatDate(doc.createdAt)}</span>
+                        </div>
+
+                        {doc.notes && (
+                          <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 whitespace-pre-line">
+                            {doc.notes.split('\nFichiers attachés :')[0]}
+                          </div>
+                        )}
+
+                        {/* Image preview thumbnail if doc is an image */}
+                        {isImg && (
+                          <div
+                            onClick={() => handleOpenImageViewer(doc)}
+                            className="relative h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer group"
+                          >
+                            <img
+                              src={doc.fileUrl}
+                              alt={doc.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
+                              <Eye className="w-4 h-4" />
+                              <span>Agrandir le cliché</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <span className="text-[11px] text-slate-400">{formatDate(doc.createdAt)}</span>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-400">
+                          {doc.uploadedBy ? `Labo : ${doc.uploadedBy}` : 'Biologie médicale'}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {isImg && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenImageViewer(doc)}
+                              className="flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Voir cliché</span>
+                            </button>
+                          )}
+                          <a
+                            href={doc.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Télécharger</span>
+                          </a>
+                        </div>
+                      </div>
                     </div>
-                    {doc.notes && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        {doc.notes}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] text-slate-400">
-                        {doc.uploadedBy ? `Labo : ${doc.uploadedBy}` : 'Biologie médicale'}
-                      </span>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Télécharger rapport</span>
-                      </a>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1646,35 +1887,79 @@ export default function PatientDetailTabs({
           <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-sm">
-                Bibliothèque de Documents du Patient ({patient.documents?.length || 0})
+                Bibliothèque de Documents du Patient ({documents.length})
               </h3>
+              <button
+                type="button"
+                onClick={() => setIsDocModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-2xs"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Ajouter un document</span>
+              </button>
             </div>
 
-            {patient.documents?.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
-                Aucun document numérique attaché à ce dossier.
+            {documents.length === 0 ? (
+              <div className="p-10 text-center text-slate-400 text-xs space-y-3">
+                <FolderOpen className="w-10 h-10 mx-auto text-slate-300" />
+                <p>Aucun document numérique attaché à ce dossier.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsDocModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Ajouter le premier document</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {patient.documents?.map((doc: any) => (
-                  <div key={doc.id} className="p-3.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <p className="font-semibold text-slate-800">{doc.title}</p>
-                        <span className="text-[10px] text-slate-400">{formatDate(doc.createdAt)} • {doc.category}</span>
+                {documents.map((doc: any) => {
+                  const isImg =
+                    (doc.fileType && doc.fileType.includes('image')) ||
+                    (doc.fileUrl && doc.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i));
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="p-3.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:border-blue-300 transition-all bg-white shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                          {isImg ? <FileImage className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                        </div>
+                        <div className="truncate">
+                          <p className="font-semibold text-slate-800 truncate">{doc.title}</p>
+                          <span className="text-[10px] text-slate-400">
+                            {formatDate(doc.createdAt)} • {doc.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {isImg && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenImageViewer(doc)}
+                            className="p-1.5 text-slate-400 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                            title="Visualiser le document"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                          title="Télécharger"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
                       </div>
                     </div>
-                    <a
-                      href={doc.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1821,6 +2106,36 @@ export default function PatientDetailTabs({
         onClose={() => setIsVitalsModalOpen(false)}
         patientName={`${patient.lastName.toUpperCase()} ${patient.firstName}`}
         consultations={patient.consultations || []}
+      />
+
+      {/* Patient Documents Upload Modal */}
+      <PatientDocumentModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+        patientId={patient.id}
+        onSuccess={handleDocumentAdded}
+      />
+
+      {/* Medical Analyses Entry Modal */}
+      <AnalysisFormModal
+        isOpen={isAnalysisModalOpen}
+        onClose={() => setIsAnalysisModalOpen(false)}
+        patientId={patient.id}
+        prescriptions={prescriptions}
+        onSuccess={handleAnalysisAdded}
+      />
+
+      {/* Analysis Prescription Results Attachment Modal */}
+      <AnalysisResultModal
+        isOpen={isResultModalOpen}
+        onClose={() => {
+          setIsResultModalOpen(false);
+          setSelectedPrescriptionForResults(null);
+        }}
+        prescription={selectedPrescriptionForResults}
+        patientId={patient.id}
+        patientName={`${patient.lastName.toUpperCase()} ${patient.firstName}`}
+        onSuccess={handleResultsSaved}
       />
     </div>
   );

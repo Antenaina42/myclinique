@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { calculateAge, calculateBMI } from '@/lib/formatters';
+import PatientSelect from '@/components/ui/PatientSelect';
 
 interface ConsultationFormClientProps {
   patients: any[];
@@ -215,19 +216,13 @@ export default function ConsultationFormClient({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Sélectionner le Patient *</label>
-            <select
+            <PatientSelect
+              label="Sélectionner le Patient"
+              patients={patients}
               value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
+              onChange={(id) => setPatientId(id)}
               required
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white font-medium"
-            >
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.lastName} {p.firstName} ({p.patientNumber})
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>

@@ -77,14 +77,33 @@ export async function generatePrescriptionPDF(data: PrescriptionPDFData): Promis
   doc.text(`Spécialité : ${data.doctor.specialty}`, 20, 61);
   doc.text(`N° d'Ordre : ${data.doctor.licenseNumber}`, 20, 67);
 
+  // Check if Exam / Analysis
+  let isExamAnalysis = false;
+  let displayNotes = data.notes || '';
+
+  if (data.notes && data.notes.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(data.notes);
+      if (parsed.type === 'EXAM_ANALYSIS') {
+        isExamAnalysis = true;
+        displayNotes = [
+          parsed.labInstructions ? `Instructions Labo : ${parsed.labInstructions}` : '',
+          parsed.doctorComment ? `Recommandations : ${parsed.doctorComment}` : '',
+        ].filter(Boolean).join(' | ');
+      }
+    } catch {}
+  } else if (data.items.some((i) => i.form?.includes('Examen') || i.form?.includes('Analyse'))) {
+    isExamAnalysis = true;
+  }
+
   // Bloc Patient & Ordonnance (Droite)
   doc.setFillColor(245, 248, 252);
   doc.roundedRect(120, 50, 70, 28, 3, 3, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(15, 76, 129);
-  doc.text(`ORDONNANCE MÉDICALE`, 125, 57);
+  doc.setTextColor(isExamAnalysis ? 16 : 15, isExamAnalysis ? 149 : 76, isExamAnalysis ? 193 : 129);
+  doc.text(isExamAnalysis ? "PRESCRIPTION D'ANALYSES" : `ORDONNANCE MÉDICALE`, 125, 57);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
@@ -93,28 +112,37 @@ export async function generatePrescriptionPDF(data: PrescriptionPDFData): Promis
   doc.text(`Date : ${formatDate(data.date)}`, 125, 68);
   doc.text(`Patient : ${data.patient.name} (${data.patient.age} ans)`, 125, 73);
 
-  // Titre Médicaments Prescrits
+  // Titre Médicaments Prescrits ou Analyses
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.setTextColor(15, 76, 129);
-  doc.text('MÉDICAMENTS & POSOLOGIE', 20, 88);
+  doc.setTextColor(isExamAnalysis ? 16 : 15, isExamAnalysis ? 149 : 76, isExamAnalysis ? 193 : 129);
+  doc.text(isExamAnalysis ? 'ANALYSES & EXAMENS BIOLOGIQUES' : 'MÉDICAMENTS & POSOLOGIE', 20, 88);
 
-  // Tableau des médicaments
-  const tableRows = data.items.map((item, index) => [
-    (index + 1).toString(),
-    `${item.medicineName} ${item.dosage}\nForme: ${item.form}`,
-    item.quantity.toString(),
-    `${item.frequency}\n${item.duration}`,
-    item.instructions || 'Selon avis médical',
-  ]);
+  // Tableau
+  const tableRows = isExamAnalysis
+    ? data.items.map((item, index) => [
+        (index + 1).toString(),
+        item.medicineName,
+        `${item.dosage || 'Standard'}${item.frequency === 'URGENT' ? '\n[URGENT]' : ''}`,
+        item.instructions || 'Selon protocole de laboratoire',
+      ])
+    : data.items.map((item, index) => [
+        (index + 1).toString(),
+        `${item.medicineName} ${item.dosage}\nForme: ${item.form}`,
+        item.quantity.toString(),
+        `${item.frequency}\n${item.duration}`,
+        item.instructions || 'Selon avis médical',
+      ]);
 
   autoTable(doc, {
     startY: 92,
-    head: [['#', 'Médicament & Forme', 'Qté', 'Posologie & Durée', 'Instructions spécifiques']],
+    head: isExamAnalysis
+      ? [['#', 'Analyse / Examen demandé', 'Conditions', 'Indication / Instructions']]
+      : [['#', 'Médicament & Forme', 'Qté', 'Posologie & Durée', 'Instructions spécifiques']],
     body: tableRows,
     theme: 'grid',
     headStyles: {
-      fillColor: [22, 119, 255],
+      fillColor: isExamAnalysis ? [16, 149, 193] : [22, 119, 255],
       textColor: [255, 255, 255],
       fontSize: 9,
       fontStyle: 'bold',
@@ -125,13 +153,20 @@ export async function generatePrescriptionPDF(data: PrescriptionPDFData): Promis
       textColor: [30, 41, 59],
       cellPadding: 4,
     },
-    columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 55 },
-      2: { cellWidth: 15, halign: 'center' },
-      3: { cellWidth: 45 },
-      4: { cellWidth: 45 },
-    },
+    columnStyles: isExamAnalysis
+      ? {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 55 },
+        }
+      : {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 15, halign: 'center' },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 45 },
+        },
     margin: { left: 20, right: 20 },
   });
 
@@ -140,11 +175,11 @@ export async function generatePrescriptionPDF(data: PrescriptionPDFData): Promis
 
   // Notes du médecin si présentes
   let currentY = lastTableY + 12;
-  if (data.notes) {
+  if (displayNotes) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8.5);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Observations : ${data.notes}`, 20, currentY);
+    doc.text(`Observations : ${displayNotes.slice(0, 150)}`, 20, currentY);
     currentY += 10;
   }
 
